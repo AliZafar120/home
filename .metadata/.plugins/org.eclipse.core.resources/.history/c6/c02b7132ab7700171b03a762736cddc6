@@ -1,0 +1,240 @@
+package Lab_1;
+import java.awt.Color;
+import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
+import java.io.StreamTokenizer;
+import java.nio.Buffer;
+import java.security.acl.Group;
+import java.util.ArrayList;
+import java.util.Currency;
+import java.util.HashMap;
+import java.util.Scanner;
+import java.util.Stack;
+
+import javax.imageio.ImageIO;
+
+import org.omg.CORBA.portable.InputStream;
+
+public class Labelling {
+	public int number_of_objects;
+	public static ArrayList<PixelGroup>images_crop;
+	public static ArrayList<PixelGroup> headless_letters;
+
+
+	public static void main(String[] args) throws IOException{
+		 try{
+	     images_crop= new ArrayList<>();
+	     headless_letters= new ArrayList<>();
+		/* BufferedImage img =ImageIO.read(new File("C:\\Users\\User\\eclipse-workspace\\ImageProcessing\\src\\Images\\4-ok-HW-pennies.jpg"));
+
+		 countObjects(mapBitwiththreshold(img,148,true));
+		get_cropped_images("C:\\Users\\User\\Desktop\\output\\",img,"jpg");*/
+	 /*	BufferedImage img =ImageIO.read(new File("C:\\Users\\User\\eclipse-workspace\\ImageProcessing\\src\\Images\\test3.png"));
+
+		 countObjects(mapBitwiththreshold(img,255,false));
+		get_cropped_images("C:\\Users\\User\\Desktop\\output\\",img,"png");*/
+	 
+	    /* BufferedImage img2 =ImageIO.read(new File("C:\\Users\\User\\eclipse-workspace\\ImageProcessing\\src\\Images\\test.png"));
+
+		 countObjects(mapBitwiththreshold(img2,148,false));
+		get_cropped_images("C:\\Users\\User\\Desktop\\output2\\",img2,"png");*/
+	 //C:\Users\User\Desktop\test7.png
+	     
+	    /* BufferedImage img =ImageIO.read(new File("C:\\Users\\User\\Desktop\\test7.png"));
+
+		 countObjects(mapBitwiththreshold(img,148,false));
+		get_cropped_images("C:\\Users\\User\\Desktop\\output\\",img,"png");*/
+	     BufferedImage img2 =ImageIO.read(new File("/home/ali/Desktop/Pictures/0image0.png"));
+	     Point [][]output=mapBitwiththreshold(img2,148,false);
+	     countObjects(output);
+	     get_cropped_images("/home/ali/Desktop/output2/",img2,"png");
+	     //printBit(output);
+	     getHeaderlessLetters();
+	    
+		
+		 }catch(IOException e){
+		      System.out.println(e);
+		 }
+		
+	}
+	
+	private static void getHeaderlessLetters() throws IOException {
+		// TODO Auto-generated method stub
+		int total_pics=images_crop.size();
+ 		for(int i=0;i<total_pics;i++) {
+			 images_crop= new ArrayList<>();
+		     BufferedImage img2 =ImageIO.read(new File("/home/ali/Desktop/output2/image"+i+".png"));
+		     Point [][]output=mapBitwiththreshold(img2,200,false);
+		     countObjects(output);
+			 //printBit(output);
+		     output=removeHeaderLine(output);
+		     for(int y = 0; y < output[0].length; y++){
+			      for(int x = 0; x <output.length; x++){
+			    	  output[x][y].setNegighbours( output);
+			      }     
+			}
+		     //printBit(output);
+		     images_crop= new ArrayList<>();
+		     for(int y = 0; y < output[0].length; y++){
+			      for(int x = 0; x <output.length; x++){
+			    	  output[x][y].visited=false;
+			      }     
+			}
+		     countObjects(output);
+		     printBit(output);
+		 
+		     get_cropped_images("/home/ali/Desktop/output3/"+i,img2,"png");
+		 		
+		}
+		
+	}
+	public static void printBit(Point [][]output) {
+		 for(int y = 0; y < output[0].length; y++){
+		      for(int x = 0; x < output.length; x++){
+		    	 System.out.print( output[x][y].value);
+		      }
+		      System.out.println();
+		    }
+		
+	}
+
+	
+	private static void countObjects(Point[][] mapBitwiththreshold) throws FileNotFoundException {
+		
+		//Point [][]label= new Point[mapBitwiththreshold.length][mapBitwiththreshold[0].length];
+		//HashMap<Integer, Integer> unique= new HashMap<>();
+		int groupno=0;
+		for(int y = 0; y < mapBitwiththreshold[0].length; y++){
+		      for(int x = 0; x < mapBitwiththreshold.length; x++){
+		    	  if(!mapBitwiththreshold[x][y].visited && mapBitwiththreshold[x][y].value==1)traceAndGroup(mapBitwiththreshold[x][y], groupno++);
+		    	  else mapBitwiththreshold[x][y].visited=true;
+		    	  //System.out.print(mapBitwiththreshold[x][y].group+" ");	
+		    	  
+		    	  }
+		      //System.out.println();
+		   }
+		System.out.println("Result");
+		System.out.println(groupno);
+		}
+	
+	public static void traceAndGroup(Point p,int groupno) {
+		Stack<Point> traceGroup=new Stack<>();
+		PixelGroup group= new PixelGroup(groupno);
+		group.maxup=p.y;
+		group.maxdown=p.y;
+		group.maxleft=p.x;
+		group.maxright=p.x;
+		traceGroup.addAll(p.neighbour);
+		while(!traceGroup.isEmpty()) {
+			Point current= traceGroup.pop();
+			current.group=groupno;
+			if(current.x>group.maxright) {group.maxright=current.x;}
+			if(current.x<group.maxleft) {group.maxleft=current.x;}
+			if(current.y>group.maxdown) {group.maxdown=current.y;}
+			if(current.y<group.maxup) {group.maxup=current.y;}
+			
+			for (Point point : current.neighbour) {
+				if(!point.visited) {
+					if(point.value==1)traceGroup.push(point);
+				}	
+			}
+			
+			current.visited=true;
+			
+		}
+		images_crop.add(group);
+		
+	}
+	
+public static void get_cropped_images(String outputDirectory,BufferedImage originalImage,String image_type) throws IOException{
+	for(int i=0;i<images_crop.size();i++){
+	BufferedImage croppedImage = originalImage.getSubimage(images_crop.get(i).maxleft,images_crop.get(i).maxup, images_crop.get(i).maxright-images_crop.get(i).maxleft, images_crop.get(i).maxdown-images_crop.get(i).maxup);
+	 ImageIO.write(croppedImage, image_type, new File(outputDirectory+"image"+i+"."+image_type));
+	}
+}
+
+public static Point[][] removeHeaderLine(Point[][] mapBitwiththreshold) {
+	for(int i=0;i<images_crop.size();i++){
+	int x=images_crop.get(i).maxleft;
+	int y=images_crop.get(i).maxup;
+	int range_x= images_crop.get(i).maxright-images_crop.get(i).maxleft;
+	int range_y=images_crop.get(i).maxdown-images_crop.get(i).maxup;
+	int maxcount=1;
+	int req_y=images_crop.get(i).maxup;
+	for(int k=y;k<y+range_y/2+1;k++) {
+		int onecount=0;
+	
+		for(int j=x;j<x+range_x;j++) {
+		if(mapBitwiththreshold[j][k].value==1){
+			onecount++;
+			};
+		}
+		
+		if(onecount>=maxcount) {
+			req_y=k;
+			maxcount=onecount;
+			}
+	
+	  }
+	for(int j=x;j<x+range_x;j++) {
+		mapBitwiththreshold[j][req_y].value=0;
+
+		//if(req_y-1>0)mapBitwiththreshold[j][req_y-1].value=0;
+
+		////mapBitwiththreshold[j][req_y-2].value=0;
+
+		//mapBitwiththreshold[j][req_y+1].value=0;
+
+		//mapBitwiththreshold[j][req_y+2].value=0;
+		}
+		
+	
+	
+	}
+	return mapBitwiththreshold;
+}
+	
+public static Point[][] mapBitwiththreshold(BufferedImage img, int threshold, boolean whiteorblack) throws FileNotFoundException{
+		int width = img.getWidth();
+	    int height = img.getHeight();
+	    Point labelled[][]=new Point[width][height];
+		for(int y = 0; y < height; y++){
+		      for(int x = 0; x < width; x++){
+		        int p = img.getRGB(x,y);
+
+		        int a = (p>>24)&0xff;
+		        int r = (p>>16)&0xff;
+		        int g = (p>>8)&0xff;
+		        int b = p&0xff;
+		        int avg = (r+g+b)/3;
+		        if(whiteorblack) {
+		        if(avg>threshold) labelled[x][y]= new Point(x, y,1);
+		        else labelled[x][y]=new Point(x, y,0);
+		        }
+		        else {
+		        	  if(avg<threshold) labelled[x][y]= new Point(x, y,1);
+				        else labelled[x][y]=new Point(x, y,0);
+		        }
+		        //System.out.print(labelled[x][y].value);
+		       }
+		      //System.out.println();
+		     }
+		for(int y = 0; y < height; y++){
+		      for(int x = 0; x < width; x++){
+		    	  labelled[x][y].setNegighbours(labelled);
+		      }     
+		}
+		
+		return labelled;
+	}
+	
+
+}
